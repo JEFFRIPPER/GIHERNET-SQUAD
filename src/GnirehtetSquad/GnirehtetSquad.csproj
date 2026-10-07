@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>GnirehtetSquad</AssemblyName>
+    <RootNamespace>GnirehtetSquad</RootNamespace>
+    <Version>2.0.0</Version>
+    <Authors>JEFFRIPPER</Authors>
+    <Product>Gnirehtet Squad</Product>
+    <Description>Gnirehtet Squad — интернет компьютера на Android по USB</Description>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WinForms нужен только для значка в трее: убираем его глобальные using, чтобы не конфликтовал с WPF -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\icon.ico" />
+    <EmbeddedResource Include="..\..\bin\gnirehtet.exe" LogicalName="gnirehtet.exe" />
+    <EmbeddedResource Include="..\..\bin\gnirehtet.apk" LogicalName="gnirehtet.apk" />
+  </ItemGroup>
+</Project>
