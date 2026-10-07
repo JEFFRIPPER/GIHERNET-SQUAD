@@ -8,7 +8,7 @@
 
 ## Быстрый старт
 
-1. Скачайте архив `GnirehtetSquad-*-win64.zip` из [Releases](../../releases) и распакуйте папку целиком.
+1. Скачайте архив `GnirehtetSquad-*-win64.zip` из [Releases](../../releases) или свежую сборку из [Actions](../../actions/workflows/build.yml) (артефакт `GnirehtetSquad-*-win64`) и распакуйте папку целиком.
 2. На телефоне включите «Параметры разработчика → Отладка по USB», подключите кабель.
 3. Запустите `GnirehtetSquad.exe`.
 4. Если adb не найден, нажмите «Скачать platform-tools» (официальный архив Google).
@@ -64,7 +64,7 @@ build.cmd               :: Windows
 
 Иконку можно пересобрать так: `go install github.com/akavel/rsrc@latest && rsrc -ico app/winres/icon.ico -manifest app/winres/app.manifest -arch amd64 -o app/rsrc_windows_amd64.syso`.
 
-GitHub Actions собирает архив на каждый push, а на тег `v*` публикует релиз.
+GitHub Actions собирает архив на каждый push (артефакт в Actions). Чтобы выпустить релиз с архивом, запушьте тег: `git tag v1.0.0 && git push origin v1.0.0`.
 
 ## Лицензии
 
