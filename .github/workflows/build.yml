@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: vet
+        working-directory: app
+        run: |
+          go vet ./...
+          GOOS=windows GOARCH=amd64 go vet ./...
+      - name: build
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          [[ "$GITHUB_REF_TYPE" == "tag" ]] || VER="dev-${GITHUB_SHA::7}"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          ./build.sh "$VER"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GnirehtetSquad-${{ env.VER }}-win64
+          path: dist/GnirehtetSquad
+      - name: release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/GnirehtetSquad-${{ env.VER }}-win64.zip

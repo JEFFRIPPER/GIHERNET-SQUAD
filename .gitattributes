@@ -1,0 +1,6 @@
+*.cmd text eol=crlf
+*.txt text eol=crlf
+*.exe binary
+*.apk binary
+*.syso binary
+*.ico binary

@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gnirehtet Squad</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,300..800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#09090A; --surface:#111113; --sc-low:#151517; --sc:#1B1A1D; --sc-high:#232125; --sc-highest:#2D2A2F;
+  --on-surface:#F2E6E7; --on-surface-var:#C2B0B2; --outline:#5E4A4D; --outline-var:#2F2729;
+  --primary:#FF3047; --primary-hi:#FF5A6C; --on-primary:#FFFFFF; --primary-dim:#B3001B;
+  --primary-container:#4A0711; --on-primary-container:#FFD9DC;
+  --secondary-container:#3A1F22; --on-secondary-container:#FFD9DC;
+  --success:#5BE38A; --success-container:#0F2E1B; --warn:#FFB960; --warn-container:#33230C;
+  --error:#FF6B6B; --error-container:#3F0B0E;
+  --r-xs:8px; --r-sm:12px; --r-md:16px; --r-lg:28px; --r-full:999px;
+  --font:"Roboto Flex","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Code",Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--on-surface);font-family:var(--font);font-size:14px;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+::selection{background:var(--primary);color:#fff}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--sc-highest);border-radius:10px;border:2px solid var(--surface)}::-webkit-scrollbar-track{background:transparent}
+svg.i{width:24px;height:24px;fill:currentColor;flex:none}
+svg.i.s{width:18px;height:18px}
+
+.app{display:grid;grid-template-columns:88px 1fr;height:100vh}
+/* navigation rail */
+.rail{background:var(--surface);display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:12px;border-right:1px solid var(--outline-var)}
+.rail .logo{width:48px;height:48px;margin-bottom:20px;filter:drop-shadow(0 4px 16px rgba(255,48,71,.45))}
+.rail-item{display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;cursor:pointer;color:var(--on-surface-var);font-size:12px;font-weight:500;letter-spacing:.3px;padding:0;width:80px}
+.rail-item .pill{width:56px;height:32px;border-radius:var(--r-full);display:grid;place-items:center;transition:background .2s}
+.rail-item:hover .pill{background:var(--sc-high)}
+.rail-item.active{color:var(--on-surface)}
+.rail-item.active .pill{background:var(--primary-container);color:var(--on-primary-container)}
+.rail .spacer{flex:1}
+.rail .badge{position:relative}
+.rail .badge[data-n]:not([data-n="0"])::after{content:attr(data-n);position:absolute;top:-4px;right:6px;background:var(--primary);color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:grid;place-items:center;padding:0 4px}
+
+main{overflow:auto;padding:24px 32px 40px;position:relative}
+.top{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.top h1{font-size:28px;font-weight:600;margin:0;letter-spacing:-.2px}
+.top h1 span{color:var(--primary)}
+.top .sub{color:var(--on-surface-var);font-size:13px}
+.top .grow{flex:1}
+
+.chip{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--outline);background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--on-surface-var);white-space:nowrap;transition:.15s}
+.chip:hover{background:var(--sc-high)}
+.chip.on{background:var(--secondary-container);border-color:transparent;color:var(--on-secondary-container)}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--outline)}
+.status-chip{cursor:default}
+.status-chip.run{border-color:transparent;background:var(--success-container);color:var(--success)}
+.status-chip.run .dot{background:var(--success);box-shadow:0 0 0 0 var(--success);animation:pulse 1.8s infinite}
+.status-chip.wait{border-color:transparent;background:var(--warn-container);color:var(--warn)}
+.status-chip.wait .dot{background:var(--warn)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(91,227,138,.6)}70%{box-shadow:0 0 0 8px rgba(91,227,138,0)}100%{box-shadow:0 0 0 0 rgba(91,227,138,0)}}
+
+.page{display:none;animation:fade .25s ease}
+.page.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+@media (max-width:980px){.g2{grid-template-columns:1fr}}
+.card{background:var(--sc-low);border-radius:var(--r-md);padding:20px;border:1px solid var(--outline-var)}
+.card.filled{background:var(--sc)}
+.card h2{font-size:16px;font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+.card .hint{color:var(--on-surface-var);font-size:13px;margin:0 0 16px;line-height:1.45}
+
+/* hero */
+.hero{position:relative;overflow:hidden;border-radius:var(--r-lg);padding:28px;background:radial-gradient(120% 140% at 0% 0%,#2A0A10 0%,#140B0D 45%,#0E0D0F 100%);border:1px solid #3A1519}
+.hero::after{content:"";position:absolute;right:-120px;top:-120px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(255,48,71,.28),transparent 65%);pointer-events:none;transition:opacity .4s}
+.hero.off::after{opacity:.35}
+.hero-row{display:flex;align-items:center;gap:28px;position:relative;z-index:1}
+.power{width:132px;height:132px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;flex:none;position:relative;
+  background:radial-gradient(circle at 30% 25%,#FF6474,var(--primary) 45%,var(--primary-dim));color:#fff;
+  box-shadow:0 10px 40px rgba(255,48,71,.45),inset 0 -6px 18px rgba(0,0,0,.35);transition:transform .15s,box-shadow .3s,filter .3s}
+.power:hover{transform:scale(1.03)}
+.power:active{transform:scale(.97)}
+.power svg{width:56px;height:56px}
+.power.off{background:radial-gradient(circle at 30% 25%,#3A3236,#232023 60%,#171518);color:var(--primary-hi);box-shadow:0 8px 30px rgba(0,0,0,.6),inset 0 0 0 2px #3a2a2d}
+.power.busy::before{content:"";position:absolute;inset:-8px;border-radius:50%;border:3px solid transparent;border-top-color:var(--primary);animation:spin 1s linear infinite}
+.power.on::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:2px solid rgba(255,48,71,.35);animation:ring 2.4s ease-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes ring{0%{transform:scale(.92);opacity:1}100%{transform:scale(1.18);opacity:0}}
+.hero-info{flex:1;min-width:0}
+.hero-info .big{font-size:30px;font-weight:650;letter-spacing:-.3px;margin:0 0 4px}
+.hero-info .desc{color:var(--on-surface-var);margin:0 0 18px;line-height:1.45}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:var(--r-sm);padding:10px 14px;min-width:104px}
+.stat b{display:block;font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--on-surface-var);text-transform:uppercase;letter-spacing:.6px}
+
+.seg{display:inline-flex;border:1px solid var(--outline);border-radius:var(--r-full);overflow:hidden;margin-top:22px;position:relative;z-index:1}
+.seg button{border:0;background:transparent;height:40px;padding:0 18px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:500;color:var(--on-surface-var)}
+.seg button+button{border-left:1px solid var(--outline)}
+.seg button.on{background:var(--secondary-container);color:var(--on-secondary-container)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.hero .controls{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 20px;border-radius:var(--r-full);border:0;cursor:pointer;font-weight:550;font-size:14px;letter-spacing:.1px;transition:.15s;white-space:nowrap}
+.btn.filled{background:var(--primary);color:var(--on-primary)}
+.btn.filled:hover{background:var(--primary-hi);box-shadow:0 2px 10px rgba(255,48,71,.35)}
+.btn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
+.btn.tonal:hover{filter:brightness(1.18)}
+.btn.outlined{background:transparent;border:1px solid var(--outline);color:var(--primary-hi)}
+.btn.outlined:hover{background:rgba(255,48,71,.08)}
+.btn.text{background:transparent;color:var(--primary-hi);padding:0 12px}
+.btn.text:hover{background:rgba(255,48,71,.08)}
+.btn.sm{height:32px;padding:0 14px;font-size:13px}
+.btn:disabled{opacity:.38;cursor:not-allowed;box-shadow:none;filter:none}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--on-surface-var);cursor:pointer;display:grid;place-items:center}
+.icon-btn:hover{background:var(--sc-high);color:var(--on-surface)}
+.icon-btn.on{color:var(--primary-hi);background:var(--primary-container)}
+
+/* fields */
+.field{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font-size:12px;color:var(--on-surface-var);font-weight:500;letter-spacing:.3px}
+.field input,.field select{height:48px;border-radius:var(--r-xs);border:1px solid var(--outline);background:var(--sc-low);padding:0 14px;outline:none;transition:border .15s,box-shadow .15s;min-width:0}
+.field input:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.field .sup{font-size:12px;color:var(--on-surface-var)}
+.row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+.row>.field{flex:1}
+
+/* list */
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:var(--r-sm);background:var(--sc);border:1px solid transparent;transition:.15s}
+.item:hover{border-color:var(--outline-var)}
+.avatar{width:44px;height:44px;border-radius:var(--r-sm);display:grid;place-items:center;background:var(--primary-container);color:var(--on-primary-container);flex:none}
+.avatar.muted{background:var(--sc-highest);color:var(--on-surface-var)}
+.item .txt{flex:1;min-width:0}
+.item .t1{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .t2{color:var(--on-surface-var);font-size:12.5px;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.item .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tag{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:6px;font-size:11.5px;font-weight:600;background:var(--sc-highest);color:var(--on-surface-var)}
+.tag.ok{background:var(--success-container);color:var(--success)}
+.tag.warn{background:var(--warn-container);color:var(--warn)}
+.tag.err{background:var(--error-container);color:var(--error)}
+.tag.red{background:var(--primary-container);color:var(--on-primary-container)}
+.empty{padding:28px 16px;text-align:center;color:var(--on-surface-var);border:1px dashed var(--outline-var);border-radius:var(--r-md);line-height:1.6}
+.empty svg{width:40px;height:40px;opacity:.5;display:block;margin:0 auto 8px}
+
+/* checks */
+.check{display:flex;align-items:center;gap:12px;padding:10px 0}
+.check+.check{border-top:1px solid var(--outline-var)}
+.check .ok{color:var(--success)}.check .bad{color:var(--error)}
+.check .txt{flex:1;min-width:0}
+.check .t2{color:var(--on-surface-var);font-size:12px;word-break:break-all}
+.progress{height:4px;border-radius:2px;background:var(--sc-highest);overflow:hidden;margin-top:8px}
+.progress i{display:block;height:100%;background:var(--primary);transition:width .2s}
+
+/* logs */
+.logbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.logbar .search{flex:1;min-width:180px;height:40px;border-radius:var(--r-full);border:1px solid var(--outline);background:var(--sc-low);padding:0 16px;outline:none}
+.logbar .search:focus{border-color:var(--primary)}
+.logbox{background:#060607;border:1px solid var(--outline-var);border-radius:var(--r-md);height:calc(100vh - 200px);min-height:300px;overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.6;padding:10px 0}
+.logbox.mini{height:220px;min-height:0}
+.ll{display:flex;gap:12px;padding:0 14px;white-space:pre-wrap;word-break:break-word}
+.ll:hover{background:rgba(255,255,255,.03)}
+.ll .tm{color:#6f6366;flex:none}
+.ll .lv{flex:none;width:44px;font-weight:600;font-size:11px;padding-top:1px}
+.ll.l-info .lv{color:#8FB8FF}.ll.l-warn .lv,.ll.l-warn .tx{color:var(--warn)}.ll.l-error .lv,.ll.l-error .tx{color:var(--error)}
+.ll.l-debug .lv{color:#777}.ll.l-app .lv{color:var(--primary-hi)}.ll.l-app .tx{color:#F7D5D8}
+
+/* switches */
+.sw-row{display:flex;align-items:center;gap:16px;padding:14px 0}
+.sw-row+.sw-row{border-top:1px solid var(--outline-var)}
+.sw-row .txt{flex:1}
+.sw-row .t1{font-weight:550}
+.sw-row .t2{color:var(--on-surface-var);font-size:12.5px;margin-top:3px;line-height:1.4}
+.switch{position:relative;width:52px;height:32px;flex:none;cursor:pointer}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch .tr{position:absolute;inset:0;border-radius:16px;background:var(--sc-highest);border:2px solid var(--outline);transition:.2s}
+.switch .th{position:absolute;top:8px;left:8px;width:16px;height:16px;border-radius:50%;background:var(--outline);transition:.2s cubic-bezier(.2,.8,.2,1.2)}
+.switch input:checked+.tr{background:var(--primary);border-color:var(--primary)}
+.switch input:checked+.tr+.th{left:24px;top:4px;width:24px;height:24px;background:#fff}
+.switch input:focus-visible+.tr{outline:2px solid var(--primary-hi);outline-offset:2px}
+
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+
+/* snackbar */
+.snack{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:#F2E6E7;color:#1A1113;padding:14px 18px;border-radius:var(--r-xs);box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;gap:16px;align-items:center;max-width:min(640px,90vw);transition:transform .25s cubic-bezier(.2,.8,.2,1);z-index:50;font-weight:500}
+.snack.show{transform:translate(-50%,0)}
+.snack.err{background:#FFDAD8;color:#410004}
+.mt{margin-top:16px}
+.muted{color:var(--on-surface-var)}
+code{font-family:var(--mono);font-size:12px;background:var(--sc-highest);padding:2px 6px;border-radius:6px}
+a{color:var(--primary-hi)}
+.steps{margin:0;padding-left:20px;line-height:1.75;color:var(--on-surface-var)}
+.steps b{color:var(--on-surface)}
+</style>
+</head>
+<body>
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></symbol>
+  <symbol id="i-logs" viewBox="0 0 24 24"><path d="M3 18h12v-2H3v2zM3 6v2h18V6H3zm0 7h18v-2H3v2z"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></symbol>
+  <symbol id="i-err" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></symbol>
+  <symbol id="i-del" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></symbol>
+  <symbol id="i-exit" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></symbol>
+  <symbol id="i-all" viewBox="0 0 24 24"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></symbol>
+</svg>
+
+<div class="app">
+  <nav class="rail">
+    <img class="logo" src="logo.svg" alt="">
+    <button class="rail-item active" data-page="home"><span class="pill"><svg class="i"><use href="#i-home"/></svg></span>Главная</button>
+    <button class="rail-item" data-page="devices"><span class="pill badge" id="devBadge" data-n="0"><svg class="i"><use href="#i-phone"/></svg></span>Устройства</button>
+    <button class="rail-item" data-page="logs"><span class="pill badge" id="errBadge" data-n="0"><svg class="i"><use href="#i-logs"/></svg></span>Журнал</button>
+    <button class="rail-item" data-page="settings"><span class="pill"><svg class="i"><use href="#i-gear"/></svg></span>Настройки</button>
+    <div class="spacer"></div>
+    <button class="rail-item" id="quitBtn" title="Остановить всё и выйти"><span class="pill"><svg class="i"><use href="#i-exit"/></svg></span>Выход</button>
+  </nav>
+
+  <main>
+    <div class="top">
+      <div>
+        <h1>Gnirehtet <span>Squad</span></h1>
+        <div class="sub">Интернет компьютера на Android по USB — без root</div>
+      </div>
+      <div class="grow"></div>
+      <span class="chip status-chip" id="statusChip"><span class="dot"></span><span id="statusText">Остановлен</span></span>
+    </div>
+
+    <!-- ГЛАВНАЯ -->
+    <section class="page active" id="page-home">
+      <div class="hero off" id="hero">
+        <div class="hero-row">
+          <button class="power off" id="powerBtn" title="Запустить / остановить"><svg class="i"><use href="#i-power"/></svg></button>
+          <div class="hero-info">
+            <p class="big" id="heroTitle">Отключено</p>
+            <p class="desc" id="heroDesc">Подключите телефон по USB с включённой отладкой и нажмите кнопку.</p>
+            <div class="stats">
+              <div class="stat"><b id="stUptime">—</b><span>Время работы</span></div>
+              <div class="stat"><b id="stClients">0</b><span>Клиентов</span></div>
+              <div class="stat"><b id="stDevices">0</b><span>Устройств</span></div>
+              <div class="stat"><b id="stRestarts">0</b><span>Перезапусков</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="seg" id="modeSeg">
+            <button data-mode="autorun"><svg class="i s"><use href="#i-all"/></svg>Все устройства</button>
+            <button data-mode="run"><svg class="i s"><use href="#i-phone"/></svg>Одно устройство</button>
+          </div>
+          <div class="field" id="serialField" style="min-width:240px;display:none">
+            <label>Устройство</label>
+            <select id="serialSel"></select>
+          </div>
+          <button class="btn outlined" id="restartBtn" style="margin-left:auto" disabled><svg class="i s"><use href="#i-refresh"/></svg>Перезапустить</button>
+        </div>
+      </div>
+
+      <div class="grid g2 mt">
+        <div class="card">
+          <h2><svg class="i s"><use href="#i-phone"/></svg>Устройства</h2>
+          <p class="hint">Определяются автоматически через adb. В режиме «Все устройства» VPN включается на каждом подключённом телефоне.</p>
+          <div class="list" id="homeDevices"></div>
+        </div>
+        <div class="card">
+          <h2><svg class="i s"><use href="#i-ok"/></svg>Готовность</h2>
+          <p class="hint">Проверка всего, что нужно для работы.</p>
+          <div id="checks"></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h2 style="justify-content:space-between">
+          <span style="display:flex;gap:10px;align-items:center"><svg class="i s"><use href="#i-logs"/></svg>Последние события</span>
+          <button class="btn text sm" data-goto="logs">Весь журнал</button>
+        </h2>
+        <div class="logbox mini mt" id="miniLog"></div>
+      </div>
+    </section>
+
+    <!-- УСТРОЙСТВА -->
+    <section class="page" id="page-devices">
+      <div class="card">
+        <h2 style="justify-content:space-between">
+          <span style="display:flex;gap:10px;align-items:center"><svg class="i s"><use href="#i-phone"/></svg>Подключённые устройства</span>
+          <button class="btn text sm" id="adbRestartBtn"><svg class="i s"><use href="#i-refresh"/></svg>Перезапустить adb</button>
+        </h2>
+        <p class="hint">Управление VPN и приложением gnirehtet на каждом устройстве отдельно.</p>
+        <div class="list" id="devList"></div>
+      </div>
+      <div class="grid g2 mt">
+        <div class="card">
+          <h2><svg class="i s"><use href="#i-wifi"/></svg>Подключение по Wi-Fi (adb tcpip)</h2>
+          <p class="hint">Телефон и ПК в одной сети, на телефоне включена беспроводная отладка.</p>
+          <div class="row">
+            <div class="field"><label>Адрес устройства</label><input id="wifiAddr" placeholder="192.168.1.50:5555"></div>
+            <button class="btn tonal" id="wifiBtn" style="height:48px">Подключить</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2><svg class="i s"><use href="#i-err"/></svg>Если устройство не видно</h2>
+          <ol class="steps">
+            <li>Включите <b>Параметры разработчика → Отладка по USB</b>.</li>
+            <li>Используйте кабель с передачей данных, не только зарядкой.</li>
+            <li>Статус «нужно разрешить» — подтвердите запрос RSA на экране телефона.</li>
+            <li>Не помогло — «Перезапустить adb» выше.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- ЖУРНАЛ -->
+    <section class="page" id="page-logs">
+      <div class="logbar">
+        <button class="chip on" data-lv="all">Все</button>
+        <button class="chip" data-lv="info">Инфо</button>
+        <button class="chip" data-lv="warn">Предупреждения</button>
+        <button class="chip" data-lv="error">Ошибки</button>
+        <button class="chip" data-lv="app">Программа</button>
+        <input class="search" id="logSearch" placeholder="Поиск по журналу">
+        <button class="icon-btn on" id="autoScrollBtn" title="Автопрокрутка"><svg class="i"><use href="#i-down"/></svg></button>
+        <button class="icon-btn" id="copyLogBtn" title="Копировать"><svg class="i"><use href="#i-copy"/></svg></button>
+        <button class="icon-btn" id="saveLogBtn" title="Сохранить в файл"><svg class="i"><use href="#i-save"/></svg></button>
+        <button class="icon-btn" id="clearLogBtn" title="Очистить"><svg class="i"><use href="#i-del"/></svg></button>
+      </div>
+      <div class="logbox" id="logBox"></div>
+    </section>
+
+    <!-- НАСТРОЙКИ -->
+    <section class="page" id="page-settings">
+      <div class="grid g2">
+        <div class="card">
+          <h2>Сеть</h2>
+          <p class="hint">DNS-серверы, которые получит телефон, и маршруты через ПК.</p>
+          <div class="presets" id="dnsPresets">
+            <button class="chip" data-dns="1.1.1.1,1.0.0.1">Cloudflare</button>
+            <button class="chip" data-dns="8.8.8.8,8.8.4.4">Google</button>
+            <button class="chip" data-dns="9.9.9.9,149.112.112.112">Quad9</button>
+            <button class="chip" data-dns="94.140.14.14,94.140.15.15">AdGuard</button>
+            <button class="chip" data-dns="77.88.8.8,77.88.8.1">Яндекс</button>
+            <button class="chip" data-dns="1.1.1.1,8.8.8.8">Cloudflare + Google</button>
+          </div>
+          <div class="field"><label>DNS (через запятую)</label><input id="sDns" placeholder="1.1.1.1,8.8.8.8"></div>
+          <div class="field mt"><label>Маршруты (CIDR через запятую)</label><input id="sRoutes" placeholder="0.0.0.0/0 — весь трафик"><span class="sup">Пусто = весь трафик. Пример: 192.168.0.0/16,10.0.0.0/8</span></div>
+          <div class="field mt"><label>Порт relay</label><input id="sPort" type="number" min="1" max="65535"><span class="sup">По умолчанию 31416</span></div>
+          <div class="field mt"><label>Путь к adb.exe (необязательно)</label><input id="sAdb" placeholder="Автоопределение"><span class="sup" id="adbFound"></span></div>
+          <div class="row mt"><button class="btn filled" id="saveSettings"><svg class="i s"><use href="#i-save"/></svg>Сохранить</button><span class="muted" id="saveHint"></span></div>
+        </div>
+        <div class="card">
+          <h2>Поведение</h2>
+          <p class="hint">Изменения применяются сразу.</p>
+          <div id="switches"></div>
+          <h2 class="mt">Обслуживание</h2>
+          <div class="row mt">
+            <button class="btn tonal" id="killStaleBtn"><svg class="i s"><use href="#i-stop"/></svg>Завершить зависшие процессы</button>
+            <button class="btn outlined" id="openFolderBtn"><svg class="i s"><use href="#i-folder"/></svg>Папка программы</button>
+          </div>
+          <p class="hint mt" id="aboutLine"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="snack" id="snack"></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const ic = (id, cls='s') => `<svg class="i ${cls}"><use href="#i-${id}"/></svg>`;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let S = null, logs = [], lvFilter = 'all', autoScroll = true, unseenErr = 0, page = 'home', uiMode = null;
+
+async function api(path, body) {
+  try {
+    const r = await fetch('/api/' + path, {method:'POST', headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    return j;
+  } catch (e) { snack(e.message, true); throw e; }
+}
+let snackT;
+function snack(msg, err) {
+  const el = $('#snack'); el.textContent = msg; el.className = 'snack show' + (err ? ' err' : '');
+  clearTimeout(snackT); snackT = setTimeout(() => el.className = 'snack', err ? 6000 : 3000);
+}
+
+// навигация
+function go(p) {
+  page = p;
+  $$('.rail-item[data-page]').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  $$('.page').forEach(s => s.classList.toggle('active', s.id === 'page-' + p));
+  if (p === 'home') { const m = $('#miniLog'); m.scrollTop = m.scrollHeight; }
+  if (p === 'logs') { unseenErr = 0; $('#errBadge').dataset.n = 0; renderLogs(true); }
+}
+$$('.rail-item[data-page]').forEach(b => b.onclick = () => go(b.dataset.page));
+$$('[data-goto]').forEach(b => b.onclick = () => go(b.dataset.goto));
+
+// состояние
+function fmtDur(ms) {
+  const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+}
+function stateRu(st) {
+  return ({device:['Готово','ok'], unauthorized:['Нужно разрешить отладку','warn'], offline:['Offline','err'], authorizing:['Авторизация…','warn']})[st] || [st, ''];
+}
+function devName(d) { return d.model || d.product || d.serial; }
+
+function render() {
+  if (!S) return;
+  const run = S.running, starting = S.starting;
+  const mode = uiMode || S.settings.mode;
+  const ready = S.devices.filter(d => d.state === 'device');
+  // статус
+  const chip = $('#statusChip');
+  chip.className = 'chip status-chip' + (run ? ' run' : starting ? ' wait' : '');
+  $('#statusText').textContent = run ? 'Работает' : starting ? 'Перезапуск…' : 'Остановлен';
+  $('#hero').classList.toggle('off', !run);
+  const pb = $('#powerBtn');
+  pb.className = 'power ' + (run ? 'on' : 'off') + (starting ? ' busy' : '');
+  $('#heroTitle').textContent = run ? (S.clients > 0 ? 'Интернет раздаётся' : 'Relay запущен') : starting ? 'Перезапуск…' : 'Отключено';
+  $('#heroDesc').textContent = run
+    ? (S.clients > 0 ? `Подключено клиентов: ${S.clients}. Телефон выходит в сеть через этот ПК.` :
+       ready.length ? 'Ожидание подключения VPN на телефоне — подтвердите запрос на экране, если он появился.' : 'Подключите телефон по USB — VPN включится автоматически.')
+    : !S.adbOk ? 'adb не найден. Скачайте platform-tools в блоке «Готовность».'
+    : ready.length ? `Найдено устройств: ${ready.length}. Нажмите кнопку питания, чтобы начать.`
+    : 'Подключите телефон по USB с включённой отладкой и нажмите кнопку.';
+  $('#stClients').textContent = S.clients;
+  $('#stDevices').textContent = ready.length;
+  $('#stRestarts').textContent = S.restarts;
+  $('#restartBtn').disabled = !run;
+  $('#devBadge').dataset.n = ready.length;
+
+  // режим
+  $$('#modeSeg button').forEach(b => { b.classList.toggle('on', b.dataset.mode === (run ? S.mode : mode)); b.disabled = run || starting; });
+  const showSerial = (run ? S.mode : mode) === 'run';
+  $('#serialField').style.display = showSerial ? '' : 'none';
+  const sel = $('#serialSel'), cur = run ? S.serial : (sel.value || S.settings.serial);
+  sel.innerHTML = (ready.length ? '' : '<option value="">Нет устройств</option>') +
+    ready.map(d => `<option value="${esc(d.serial)}">${esc(devName(d))} · ${esc(d.serial)}</option>`).join('');
+  if (cur && ready.some(d => d.serial === cur)) sel.value = cur;
+  sel.disabled = run || starting;
+
+  renderDevices();
+  renderChecks();
+  renderSettingsInfo();
+}
+
+function devActions(d, compact) {
+  if (d.state !== 'device') return '';
+  if (d.busy) return `<span class="tag warn">${esc({start:'Включение…',stop:'Отключение…',install:'Установка…',reinstall:'Переустановка…',uninstall:'Удаление…'}[d.busy] || d.busy)}</span>`;
+  const a = [];
+  if (S.running) {
+    a.push(`<button class="btn tonal sm" onclick="devAct('${esc(d.serial)}','start')">${ic('play')}VPN вкл</button>`);
+    a.push(`<button class="btn text sm" onclick="devAct('${esc(d.serial)}','stop')">${ic('stop')}Выкл</button>`);
+  } else if (!compact) {
+    a.push(`<button class="btn text sm" onclick="devAct('${esc(d.serial)}','stop')">${ic('stop')}Отключить VPN</button>`);
+  }
+  if (!compact) {
+    a.push(d.installed === false
+      ? `<button class="btn outlined sm" onclick="devAct('${esc(d.serial)}','install')">${ic('dl')}Установить APK</button>`
+      : `<button class="btn outlined sm" onclick="devAct('${esc(d.serial)}','reinstall')">${ic('refresh')}Переустановить</button>`);
+    if (d.installed) a.push(`<button class="icon-btn" title="Удалить приложение" onclick="devAct('${esc(d.serial)}','uninstall')">${ic('del','s')}</button>`);
+  }
+  return a.join('');
+}
+function devItem(d, compact) {
+  const [st, cls] = stateRu(d.state);
+  const inst = d.installed === true ? '<span class="tag red">APK установлен</span>' : d.installed === false ? '<span class="tag">APK не установлен</span>' : '';
+  const active = S.running && (S.mode === 'autorun' || S.serial === d.serial) && d.state === 'device';
+  return `<div class="item">
+    <div class="avatar ${d.state === 'device' ? '' : 'muted'}">${ic(d.wireless ? 'wifi' : 'phone', '')}</div>
+    <div class="txt"><div class="t1">${esc(devName(d))}</div>
+      <div class="t2"><span>${esc(d.serial)}</span><span class="tag ${cls}">${esc(st)}</span>${inst}${active ? '<span class="tag ok">в сессии</span>' : ''}</div></div>
+    <div class="acts">${devActions(d, compact)}</div></div>`;
+}
+function emptyDev() {
+  return `<div class="empty">${ic('phone','')}${S.adbOk ? 'Устройства не найдены.<br>Подключите телефон по USB и разрешите отладку.' : 'adb недоступен — устройства не опрашиваются.'}</div>`;
+}
+function renderDevices() {
+  const list = S.devices;
+  const h = list.length ? list.map(d => devItem(d, true)).join('') : emptyDev();
+  const f = list.length ? list.map(d => devItem(d, false)).join('') : emptyDev();
+  if ($('#homeDevices').dataset.h !== h) { $('#homeDevices').innerHTML = h; $('#homeDevices').dataset.h = h; }
+  if ($('#devList').dataset.h !== f) { $('#devList').innerHTML = f; $('#devList').dataset.h = f; }
+}
+window.devAct = (serial, action) => {
+  if (action === 'uninstall' && !confirm('Удалить приложение gnirehtet с устройства?')) return;
+  api('device', {serial, action}).catch(() => {});
+};
+
+function renderChecks() {
+  const dl = S.download;
+  const row = (ok, t1, t2, extra='') => `<div class="check"><span class="${ok ? 'ok' : 'bad'}">${ic(ok ? 'ok' : 'err', '')}</span><div class="txt"><div>${t1}</div><div class="t2">${t2}</div>${extra}</div></div>`;
+  let adbExtra = '';
+  if (!S.adbOk) {
+    if (dl && !dl.error) {
+      const pct = dl.total > 0 ? Math.round(dl.done / dl.total * 100) : 0;
+      adbExtra = `<div class="progress"><i style="width:${pct}%"></i></div><div class="t2">Загрузка ${(dl.done/1048576).toFixed(1)} МБ ${dl.total > 0 ? 'из ' + (dl.total/1048576).toFixed(1) + ' МБ' : ''}</div>`;
+    } else {
+      adbExtra = `<div class="row" style="margin-top:8px"><button class="btn filled sm" onclick="dlAdb()">${ic('dl')}Скачать platform-tools</button><button class="btn text sm" data-goto2="settings" onclick="go('settings')">Указать путь</button></div>` + (dl && dl.error ? `<div class="t2" style="color:var(--error)">${esc(dl.error)}</div>` : '');
+    }
+  }
+  const h = [
+    row(S.gnirehtetOk, 'gnirehtet relay', S.gnirehtetOk ? esc(S.gnirehtet) : 'Положите программу в папку с gnirehtet.exe'),
+    row(S.apkOk, 'gnirehtet.apk', S.apkOk ? 'Будет установлен на телефон автоматически' : 'Файл не найден рядом с программой'),
+    row(S.adbOk, 'Android Debug Bridge (adb)', S.adbOk ? esc(S.adbPath) : esc(S.adbError || 'Не найден'), adbExtra),
+  ].join('');
+  if ($('#checks').dataset.h !== h) { $('#checks').innerHTML = h; $('#checks').dataset.h = h; }
+}
+window.dlAdb = () => api('adb/download').catch(() => {});
+window.go = go;
+
+// управление
+$('#powerBtn').onclick = async () => {
+  if (!S) return;
+  if (S.running || S.starting) { await api('stop').catch(() => {}); snack('Relay останавливается…'); return; }
+  const mode = uiMode || S.settings.mode;
+  const serial = mode === 'run' ? $('#serialSel').value : '';
+  if (mode === 'run' && !serial) { snack('Нет готовых устройств для режима «Одно устройство»', true); return; }
+  await api('settings', {...S.settings, mode, serial: serial || S.settings.serial}).catch(() => {});
+  api('start', {mode, serial}).then(() => snack('Relay запущен')).catch(() => {});
+};
+$('#restartBtn').onclick = () => api('restart').then(() => snack('Relay перезапущен')).catch(() => {});
+$$('#modeSeg button').forEach(b => b.onclick = () => { uiMode = b.dataset.mode; render(); });
+$('#adbRestartBtn').onclick = () => api('adb/restart').then(() => snack('adb перезапускается…')).catch(() => {});
+$('#wifiBtn').onclick = () => api('adb/connect', {addr: $('#wifiAddr').value}).then(() => snack('Подключение…')).catch(() => {});
+$('#killStaleBtn').onclick = () => { if (confirm('Завершить все процессы gnirehtet.exe на этом ПК?')) api('killstale').then(() => snack('Готово')).catch(() => {}); };
+$('#openFolderBtn').onclick = () => api('openfolder').catch(() => {});
+$('#quitBtn').onclick = () => { if (confirm('Остановить relay и закрыть программу?')) api('quit').then(() => { document.body.innerHTML = '<div style="display:grid;place-items:center;height:100vh;color:#C2B0B2;font-family:var(--font)">Программа закрыта. Окно можно закрыть.</div>'; setTimeout(() => window.close(), 400); }).catch(() => {}); };
+
+// настройки
+const SWITCHES = [
+  ['autoStart', 'Запускать relay при открытии программы', 'Не нужно нажимать кнопку питания каждый раз.'],
+  ['autoRestart', 'Автоперезапуск при сбое', 'Если gnirehtet упадёт, он будет перезапущен автоматически.'],
+  ['stopDevicesOnOff', 'Отключать VPN на телефонах при остановке', 'Иначе на телефоне останется значок VPN без интернета.'],
+  ['keepBackground', 'Работать в фоне после закрытия окна', 'Повторный запуск программы снова откроет окно. Полный выход — кнопка «Выход».'],
+  ['startWithWindows', 'Запускать вместе с Windows', 'Стартует в фоне без окна и сразу запускает relay.'],
+];
+let settingsFilled = false;
+function renderSettingsInfo() {
+  const s = S.settings;
+  if (!settingsFilled) {
+    $('#sDns').value = s.dns; $('#sRoutes').value = s.routes; $('#sPort').value = s.port; $('#sAdb').value = s.adbPath;
+    settingsFilled = true;
+  }
+  $$('#dnsPresets .chip').forEach(c => c.classList.toggle('on', c.dataset.dns === $('#sDns').value.replace(/\s/g, '')));
+  $('#adbFound').textContent = S.adbOk ? 'Используется: ' + S.adbPath : 'adb не найден';
+  const h = SWITCHES.map(([k, t1, t2]) => `<label class="sw-row"><div class="txt"><div class="t1">${t1}</div><div class="t2">${t2}</div></div>
+    <span class="switch"><input type="checkbox" data-k="${k}" ${s[k] ? 'checked' : ''} ${k === 'startWithWindows' && S.os !== 'windows' ? 'disabled' : ''}><span class="tr"></span><span class="th"></span></span></label>`).join('');
+  const box = $('#switches');
+  if (box.dataset.h !== h) {
+    box.innerHTML = h; box.dataset.h = h;
+    box.querySelectorAll('input').forEach(i => i.onchange = () => api('settings', {...S.settings, [i.dataset.k]: i.checked}).then(() => snack('Сохранено')).catch(() => { i.checked = !i.checked; }));
+  }
+  $('#aboutLine').innerHTML = `Gnirehtet Squad ${esc(S.version)} · relay gnirehtet 2.5.1 · папка: <code>${esc(S.baseDir)}</code>`;
+}
+$$('#dnsPresets .chip').forEach(c => c.onclick = () => { $('#sDns').value = c.dataset.dns; renderSettingsInfo(); });
+$('#sDns').oninput = () => renderSettingsInfo();
+$('#saveSettings').onclick = () => {
+  const ipList = v => v.split(',').map(x => x.trim()).filter(Boolean);
+  const dns = ipList($('#sDns').value), routes = ipList($('#sRoutes').value);
+  const ipRe = /^(\d{1,3}\.){3}\d{1,3}$/, cidrRe = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
+  if (dns.some(x => !ipRe.test(x))) return snack('DNS: укажите IPv4-адреса через запятую', true);
+  if (routes.some(x => !cidrRe.test(x))) return snack('Маршруты: формат 192.168.0.0/16', true);
+  const port = +$('#sPort').value;
+  api('settings', {...S.settings, dns: dns.join(','), routes: routes.join(','), port, adbPath: $('#sAdb').value.trim()})
+    .then(() => { snack(S.running ? 'Сохранено. Перезапустите relay, чтобы применить.' : 'Настройки сохранены'); })
+    .catch(() => {});
+};
+
+// журнал
+const LV = {info:'INFO', warn:'WARN', error:'ERROR', debug:'DEBUG', app:'APP'};
+function logHtml(l) { return `<div class="ll l-${l.level}"><span class="tm">${l.t}</span><span class="lv">${LV[l.level] || l.level}</span><span class="tx">${esc(l.text)}</span></div>`; }
+function passes(l) {
+  if (lvFilter !== 'all' && l.level !== lvFilter) return false;
+  const q = $('#logSearch').value.trim().toLowerCase();
+  return !q || l.text.toLowerCase().includes(q);
+}
+function renderLogs(full) {
+  const box = $('#logBox');
+  box.innerHTML = logs.filter(passes).map(logHtml).join('');
+  if (autoScroll) box.scrollTop = box.scrollHeight;
+  const mini = $('#miniLog');
+  mini.innerHTML = logs.slice(-60).map(logHtml).join('');
+  mini.scrollTop = mini.scrollHeight;
+}
+function addLog(l) {
+  logs.push(l); if (logs.length > 3000) logs.shift();
+  if (l.level === 'error' && page !== 'logs') { unseenErr++; $('#errBadge').dataset.n = unseenErr; }
+  const mini = $('#miniLog');
+  mini.insertAdjacentHTML('beforeend', logHtml(l));
+  while (mini.children.length > 60) mini.firstChild.remove();
+  mini.scrollTop = mini.scrollHeight;
+  if (page === 'logs' && passes(l)) {
+    const box = $('#logBox'); box.insertAdjacentHTML('beforeend', logHtml(l));
+    if (autoScroll) box.scrollTop = box.scrollHeight;
+  }
+}
+$$('.logbar [data-lv]').forEach(c => c.onclick = () => { lvFilter = c.dataset.lv; $$('.logbar [data-lv]').forEach(x => x.classList.toggle('on', x === c)); renderLogs(); });
+$('#logSearch').oninput = () => renderLogs();
+$('#autoScrollBtn').onclick = e => { autoScroll = !autoScroll; e.currentTarget.classList.toggle('on', autoScroll); if (autoScroll) renderLogs(); };
+const logText = () => logs.filter(passes).map(l => `${l.t} ${LV[l.level] || l.level} ${l.text}`).join('\r\n');
+$('#copyLogBtn').onclick = () => navigator.clipboard.writeText(logText()).then(() => snack('Журнал скопирован'));
+$('#saveLogBtn').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([logText()], {type:'text/plain'}));
+  a.download = 'gnirehtet-' + new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-') + '.log';
+  a.click(); URL.revokeObjectURL(a.href);
+};
+$('#clearLogBtn').onclick = () => api('logs/clear').then(() => { logs = []; renderLogs(); }).catch(() => {});
+
+// таймер работы
+setInterval(() => { $('#stUptime').textContent = S && S.running && S.startedAt ? fmtDur(Date.now() - S.startedAt) : '—'; }, 1000);
+
+// связь с программой
+async function connect() {
+  try { logs = await (await fetch('/api/logs')).json(); renderLogs(); } catch {}
+  const es = new EventSource('/api/events');
+  es.addEventListener('state', e => { S = JSON.parse(e.data); render(); });
+  es.addEventListener('log', e => addLog(JSON.parse(e.data)));
+  es.onerror = () => { $('#statusText').textContent = 'Нет связи'; $('#statusChip').className = 'chip status-chip wait'; };
+}
+connect();
+</script>
+</body>
+</html>
