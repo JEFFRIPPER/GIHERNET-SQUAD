@@ -1,14 +1,12 @@
 # Gnirehtet Squad
 
-Графическая оболочка для [gnirehtet](https://github.com/Genymobile/gnirehtet) 2.5.1 под Windows: раздаёт интернет компьютера на Android-телефон по USB (reverse tethering), root не нужен.
+Windows-программа для [gnirehtet](https://github.com/Genymobile/gnirehtet) 2.5.1: раздаёт интернет компьютера на Android-телефон по USB (reverse tethering), root не нужен.
 
-Интерфейс в стиле Material Design 3: почти чёрная тема с насыщенными кроваво-алыми акцентами и свечением.
-
-![Главный экран](docs/screenshots/home.png)
+C# WPF, один `GnirehtetSquad.exe` (self-contained, .NET ставить не нужно). Дизайн в стиле Material Design 3: почти чёрный фон, насыщенный кроваво-алый со свечением, тёмный заголовок окна. `gnirehtet.exe` и `gnirehtet.apk` вшиты в exe.
 
 ## Быстрый старт
 
-1. Скачайте архив `GnirehtetSquad-*-win64.zip` из [Releases](../../releases) и распакуйте папку целиком.
+1. Скачайте `GnirehtetSquad-*-win64.zip` из [Releases](../../releases) и распакуйте.
 2. На телефоне включите «Параметры разработчика → Отладка по USB», подключите кабель.
 3. Запустите `GnirehtetSquad.exe`.
 4. Если adb не найден, нажмите «Скачать platform-tools» (официальный архив Google).
@@ -16,68 +14,53 @@
 
 ## Возможности
 
-- Старт, стоп и перезапуск relay одной кнопкой; режимы «Все устройства» (`autorun`) и «Одно устройство» (`run <serial>`).
-- Список устройств с моделью и статусом; включение и выключение VPN, установка, переустановка и удаление APK на каждом телефоне.
-- Подключение по Wi-Fi (`adb connect`), перезапуск adb-сервера.
-- Живой журнал: фильтры по уровню, поиск, копирование, сохранение в файл.
-- Время работы, число подключённых клиентов, счётчик перезапусков.
-- Автоперезапуск relay при падении.
-- Настройки DNS с пресетами (Cloudflare, Google, Quad9, AdGuard, Яндекс), маршруты, порт, путь к adb.
-- Выключение VPN на телефонах при остановке, чтобы не оставался «мёртвый» значок VPN.
-- Проверка занятого порта и кнопка «Завершить зависшие процессы».
-- Работа в фоне после закрытия окна и автозагрузка вместе с Windows (`--background`).
-- Один экземпляр: повторный запуск открывает окно уже работающей программы.
-- **OTA-обновления**: проверка GitHub Releases при запуске и каждые 6 часов, установка в один клик или автоматически. Архив проверяется по SHA-256, файлы заменяются на месте, программа перезапускается сама и возвращает relay в работу.
-
-![Обновление](docs/screenshots/update.png)
-
-| Устройства | Журнал | Настройки |
-|---|---|---|
-| ![](docs/screenshots/devices.png) | ![](docs/screenshots/logs.png) | ![](docs/screenshots/settings.png) |
+- Старт, стоп и перезапуск relay; режимы «Все устройства» (`autorun`) и «Одно устройство» (`run <serial>`).
+- Список устройств с моделью и статусом; VPN вкл/выкл, установка, переустановка и удаление APK на каждом телефоне.
+- Подключение по Wi-Fi (`adb connect`), перезапуск adb-сервера, скачивание platform-tools.
+- Журнал с фильтрами и поиском; время работы, число клиентов, автоперезапуск relay при падении.
+- DNS-пресеты (Cloudflare, Google, Quad9, AdGuard, Яндекс), маршруты, порт, путь к adb.
+- Выключение VPN на телефонах при остановке.
+- Трей, работа в фоне, автозагрузка с Windows (`--background`), один экземпляр.
+- **OTA-обновления** через GitHub Releases: проверка при запуске и каждые 6 часов, установка в один клик или автоматически, проверка SHA-256, замена файлов с откатом и перезапуск с возвратом relay в работу.
 
 ## Как устроено
 
-Один исполняемый файл на Go без внешних зависимостей. Внутри: HTTP-сервер на `127.0.0.1:47316` (REST + Server-Sent Events) и встроенный интерфейс `app/ui/index.html`. Окно открывается через Microsoft Edge (есть в Windows 10/11) в режиме приложения `--app=`, запасные варианты: Chrome, Brave, браузер по умолчанию. Оболочка запускает `gnirehtet.exe` и `adb.exe` как дочерние процессы без консольных окон и разбирает их вывод.
-
-Поиск adb по порядку: путь из настроек, `platform-tools\` рядом с программой, `adb.exe` рядом с программой, `%APPDATA%\GnirehtetSquad\platform-tools\`, `PATH`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, `%LOCALAPPDATA%\Android\Sdk`.
-
-Настройки хранятся в `%APPDATA%\GnirehtetSquad\settings.json`.
-
-### Как работает OTA
-
-1. Программа запрашивает `api.github.com/repos/JEFFRIPPER/GIHERNET-SQUAD/releases/latest` и сравнивает тег с `appVersion`.
-2. Скачивает `GnirehtetSquad-X.Y.Z-win64.zip` и сверяет SHA-256 с `digest`, который отдаёт GitHub.
-3. Останавливает relay, переименовывает текущие файлы в `*.old` (работающий exe Windows разрешает переименовать) и кладёт новые. При ошибке всё откатывается.
-4. Запускает новую версию с `--after-update`: она дожидается освобождения порта, окно переподключается и перезагружает интерфейс, relay стартует снова, файлы `*.old` удаляются.
-
-Папка программы должна быть доступна на запись (не `Program Files`).
-
 ```
-app/                Go-исходники оболочки
-  main.go           сервер, управление relay, устройства, журнал
-  update.go         OTA: проверка релизов, скачивание, SHA-256, замена файлов, перезапуск
-  platform_*.go     Windows-специфика: скрытые процессы, окно, автозагрузка
-  ui/               интерфейс (HTML/CSS/JS, вшивается в exe)
-  winres/           иконка и манифест; rsrc_windows_amd64.syso собран из них
-bin/                оригинальные gnirehtet.exe / gnirehtet.apk 2.5.1 (Apache 2.0)
-docs/               README для архива и скриншоты
+src/GnirehtetSquad/
+  App.xaml(.cs)          запуск, один экземпляр, трей, аргументы командной строки
+  MainWindow.xaml(.cs)   интерфейс: главная, устройства, журнал, настройки
+  Core/Engine.cs         relay gnirehtet, adb, журнал, настройки, platform-tools
+  Core/Updater.cs        OTA: releases/latest → zip → SHA-256 → замена → перезапуск
+  Core/Models.cs         модели и настройки
+bin/                     оригинальные gnirehtet.exe / gnirehtet.apk 2.5.1 (вшиваются в exe)
+scripts/publish.ps1      сборка exe и zip для релиза
+docs/README.txt          README внутри архива
 ```
+
+Вшитые `gnirehtet.exe` и `gnirehtet.apk` при запуске распаковываются в `%APPDATA%\GnirehtetSquad\bin`. Настройки: `%APPDATA%\GnirehtetSquad\settings.json`.
+
+### OTA
+
+1. Запрос `api.github.com/repos/JEFFRIPPER/GIHERNET-SQUAD/releases/latest`, сравнение тега с версией программы.
+2. Скачивание `GnirehtetSquad-X.Y.Z-win64.zip`, сверка SHA-256 с `digest` ассета.
+3. Остановка relay, текущие файлы переименовываются в `*.old`, новые кладутся на их место; при ошибке откат.
+4. Запуск новой версии с `--after-update [--start-relay] [--background]`, `*.old` удаляются.
+
+Формат zip (`GnirehtetSquad/GnirehtetSquad.exe` на верхнем уровне) совместим с апдейтером версии 1.1.0, поэтому старые установки обновляются сами.
 
 ## Сборка
 
-Нужен Go 1.22+.
+Нужен .NET 8 SDK.
 
-```bash
-./build.sh 1.0.0        # Linux/macOS: кросс-сборка, результат в dist/
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\publish.ps1
 ```
 
-```bat
-build.cmd               :: Windows
-```
+Результат: `dist\GnirehtetSquad\GnirehtetSquad.exe`, архив `dist\GnirehtetSquad-<версия>-win64.zip` и копия exe в корне проекта.
 
-Иконку можно пересобрать так: `go install github.com/akavel/rsrc@latest && rsrc -ico app/winres/icon.ico -manifest app/winres/app.manifest -arch amd64 -o app/rsrc_windows_amd64.syso`.
+## Релизы
 
-GitHub Actions собирает архив на каждый push (артефакт в Actions). Релизы выпускаются автоматически: достаточно поднять `appVersion` в `app/main.go` и запушить в `main` — workflow сам создаст тег `vX.Y.Z` и релиз с zip.
+GitHub Actions (`.github/workflows/build.yml`, windows-latest) собирает exe на каждый push. Чтобы выпустить релиз, поднимите `<Version>` в `src/GnirehtetSquad/GnirehtetSquad.csproj` и запушьте в `main`: workflow сам создаст тег `vX.Y.Z` и релиз с zip.
 
 ## Лицензии
 
