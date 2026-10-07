@@ -1,5 +1,9 @@
 name: build
 
+# Каждый push в main собирает архив (артефакт).
+# Если версия appVersion в app/main.go новая (тега vX.Y.Z ещё нет) —
+# workflow сам создаёт тег и релиз с zip. Тег, запушенный вручную, тоже даёт релиз.
+
 on:
   push:
     branches: [main]
@@ -15,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
@@ -23,18 +29,35 @@ jobs:
         run: |
           go vet ./...
           GOOS=windows GOARCH=amd64 go vet ./...
-      - name: build
+      - name: version
         run: |
-          VER="${GITHUB_REF_NAME#v}"
-          [[ "$GITHUB_REF_TYPE" == "tag" ]] || VER="dev-${GITHUB_SHA::7}"
+          APP_VER=$(sed -n 's/^\s*appVersion\s*=\s*"\(.*\)"/\1/p' app/main.go)
+          [[ -n "$APP_VER" ]] || { echo "appVersion не найден в app/main.go"; exit 1; }
+          RELEASE=false
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VER="${GITHUB_REF_NAME#v}"; RELEASE=true
+          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" == "main" ]] && ! git rev-parse -q --verify "refs/tags/v$APP_VER" >/dev/null; then
+            VER="$APP_VER"; RELEASE=true
+          else
+            VER="dev-${GITHUB_SHA::7}"
+          fi
           echo "VER=$VER" >> "$GITHUB_ENV"
-          ./build.sh "$VER"
+          echo "RELEASE=$RELEASE" >> "$GITHUB_ENV"
+          echo "Версия: $VER, релиз: $RELEASE"
+      - name: build
+        run: ./build.sh "$VER"
       - uses: actions/upload-artifact@v4
         with:
           name: GnirehtetSquad-${{ env.VER }}-win64
           path: dist/GnirehtetSquad
       - name: release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VER }}
+          target_commitish: ${{ github.sha }}
+          name: Gnirehtet Squad ${{ env.VER }}
           files: dist/GnirehtetSquad-${{ env.VER }}-win64.zip
+          body: |
+            Скачайте `GnirehtetSquad-${{ env.VER }}-win64.zip`, распакуйте папку целиком и запустите `GnirehtetSquad.exe`.
+            Подробности — в [README](https://github.com/${{ github.repository }}#readme).
