@@ -33,7 +33,7 @@ var uiFS embed.FS
 
 const (
 	appName         = "Gnirehtet Squad"
-	appVersion      = "1.0.0"
+	appVersion      = "1.1.0"
 	uiPort          = 47316
 	platformToolURL = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 	apkPackage      = "com.genymobile.gnirehtet"
@@ -54,6 +54,8 @@ type Settings struct {
 	StopDevicesOnOff bool   `json:"stopDevicesOnOff"`
 	KeepBackground   bool   `json:"keepBackground"`
 	StartWithWindows bool   `json:"startWithWindows"`
+	CheckUpdates     bool   `json:"checkUpdates"`
+	AutoUpdate       bool   `json:"autoUpdate"`
 }
 
 func defaultSettings() Settings {
@@ -63,6 +65,7 @@ func defaultSettings() Settings {
 		Port:             31416,
 		AutoRestart:      true,
 		StopDevicesOnOff: true,
+		CheckUpdates:     true,
 	}
 }
 
@@ -84,25 +87,26 @@ type LogLine struct {
 }
 
 type State struct {
-	Version     string    `json:"version"`
-	Running     bool      `json:"running"`
-	Starting    bool      `json:"starting"`
-	Mode        string    `json:"mode"`
-	Serial      string    `json:"serial"`
-	StartedAt   int64     `json:"startedAt"`
-	Clients     int       `json:"clients"`
-	Restarts    int       `json:"restarts"`
-	AdbPath     string    `json:"adbPath"`
-	AdbOK       bool      `json:"adbOk"`
-	AdbError    string    `json:"adbError"`
-	Gnirehtet   string    `json:"gnirehtet"`
-	GnirehtetOK bool      `json:"gnirehtetOk"`
-	ApkOK       bool      `json:"apkOk"`
-	Devices     []Device  `json:"devices"`
-	Settings    Settings  `json:"settings"`
-	Download    *Download `json:"download"`
-	BaseDir     string    `json:"baseDir"`
-	OS          string    `json:"os"`
+	Version     string     `json:"version"`
+	Running     bool       `json:"running"`
+	Starting    bool       `json:"starting"`
+	Mode        string     `json:"mode"`
+	Serial      string     `json:"serial"`
+	StartedAt   int64      `json:"startedAt"`
+	Clients     int        `json:"clients"`
+	Restarts    int        `json:"restarts"`
+	AdbPath     string     `json:"adbPath"`
+	AdbOK       bool       `json:"adbOk"`
+	AdbError    string     `json:"adbError"`
+	Gnirehtet   string     `json:"gnirehtet"`
+	GnirehtetOK bool       `json:"gnirehtetOk"`
+	ApkOK       bool       `json:"apkOk"`
+	Devices     []Device   `json:"devices"`
+	Settings    Settings   `json:"settings"`
+	Download    *Download  `json:"download"`
+	BaseDir     string     `json:"baseDir"`
+	OS          string     `json:"os"`
+	Update      UpdateInfo `json:"update"`
 }
 
 type Download struct {
@@ -121,9 +125,9 @@ type event struct {
 type App struct {
 	mu sync.Mutex
 
-	baseDir   string
-	cfgDir    string
-	settings  Settings
+	baseDir    string
+	cfgDir     string
+	settings   Settings
 	background bool
 
 	proc        *exec.Cmd
@@ -142,6 +146,7 @@ type App struct {
 	adbErr       string
 	download     *Download
 	installCheck map[string]bool
+	update       UpdateInfo
 
 	logs   []LogLine
 	logSeq int64
@@ -350,6 +355,7 @@ func (a *App) stateLocked() State {
 		AdbPath: a.adbPath, AdbOK: a.adbPath != "" && a.adbErr == "", AdbError: a.adbErr,
 		Gnirehtet: a.gnirehtetPath(), GnirehtetOK: fileExists(a.gnirehtetPath()), ApkOK: fileExists(a.apkPath()),
 		Devices: devs, Settings: a.settings, Download: dl, BaseDir: a.baseDir, OS: runtime.GOOS,
+		Update: a.update,
 	}
 }
 
@@ -1051,6 +1057,8 @@ func (a *App) routes() http.Handler {
 		a.mu.Unlock()
 		return nil
 	})
+	post("/api/update/check", func(r *http.Request) error { go a.CheckUpdate(true); return nil })
+	post("/api/update/install", func(r *http.Request) error { return a.InstallUpdate() })
 	post("/api/openfolder", func(r *http.Request) error { return openFolder(a.baseDir) })
 	post("/api/quit", func(r *http.Request) error {
 		go func() { time.Sleep(200 * time.Millisecond); a.shutdown() }()
@@ -1105,10 +1113,19 @@ func (a *App) shutdown() {
 	shutdownOnce.Do(func() {
 		a.log("app", "Выход…")
 		a.Stop(true)
-		close(a.quit)
-		time.Sleep(300 * time.Millisecond)
-		os.Exit(0)
+		a.exitNow()
 	})
+}
+
+// exitNow завершает процесс без остановки VPN на устройствах (используется и при обновлении).
+func (a *App) exitNow() {
+	select {
+	case <-a.quit:
+	default:
+		close(a.quit)
+	}
+	time.Sleep(300 * time.Millisecond)
+	os.Exit(0)
 }
 
 // watchWindow завершает программу, когда окно закрыто (нет подключённых окон),
@@ -1136,10 +1153,17 @@ func (a *App) watchWindow() {
 func main() {
 	background := flag.Bool("background", false, "запуск без окна (для автозагрузки), relay стартует сразу")
 	noWindow := flag.Bool("no-window", false, "не открывать окно (только сервер)")
+	afterUpdate := flag.Bool("after-update", false, "служебный: запуск после OTA-обновления")
+	startRelay := flag.Bool("start-relay", false, "сразу запустить relay")
 	flag.Parse()
 
 	url := fmt.Sprintf("http://127.0.0.1:%d/", uiPort)
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", uiPort))
+	// после обновления старая версия ещё освобождает порт — ждём её, окно переподключится само
+	for i := 0; err != nil && *afterUpdate && i < 40; i++ {
+		time.Sleep(500 * time.Millisecond)
+		ln, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", uiPort))
+	}
 	if err != nil {
 		// уже запущен — просто открываем окно существующего экземпляра
 		if resp, e := http.Get(url + "api/ping"); e == nil {
@@ -1158,6 +1182,11 @@ func main() {
 
 	a := newApp(*background)
 	a.log("app", fmt.Sprintf("%s %s · папка: %s", appName, appVersion, a.baseDir))
+	if *afterUpdate {
+		a.log("app", "✓ Программа обновлена до версии "+appVersion)
+	}
+	go a.cleanupOld()
+	go a.updateLoop()
 	if !fileExists(a.gnirehtetPath()) {
 		a.log("error", "Не найден "+a.gnirehtetPath()+" — положите программу рядом с gnirehtet.exe")
 	}
@@ -1170,7 +1199,7 @@ func main() {
 	}()
 
 	a.mu.Lock()
-	auto := a.settings.AutoStart || *background
+	auto := a.settings.AutoStart || *background || *startRelay
 	a.mu.Unlock()
 	if auto {
 		if err := a.Start("", ""); err != nil {
@@ -1179,7 +1208,7 @@ func main() {
 	}
 
 	go a.watchWindow()
-	if !*background && !*noWindow {
+	if !*background && !*noWindow && !*afterUpdate {
 		go openWindow(url, filepath.Join(a.cfgDir, "window"))
 	}
 	srv := &http.Server{Handler: a.routes()}
