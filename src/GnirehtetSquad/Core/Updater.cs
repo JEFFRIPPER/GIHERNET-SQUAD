@@ -274,6 +274,14 @@ public sealed partial class Engine
             if (Directory.Exists(oldProfile)) Directory.Delete(oldProfile, true);
         }
         catch { }
+        // до 2.0.1 gnirehtet распаковывался в Roaming
+        try
+        {
+            var oldBin = Path.Combine(CfgDir, "bin");
+            if (!string.Equals(Path.GetFullPath(oldBin), Path.GetFullPath(ToolsDir), StringComparison.OrdinalIgnoreCase) && Directory.Exists(oldBin))
+                Directory.Delete(oldBin, true);
+        }
+        catch { }
         string[] old;
         try { old = Directory.GetFiles(BaseDir, "*.old"); } catch { return; }
         foreach (var f in old)

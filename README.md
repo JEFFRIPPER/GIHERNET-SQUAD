@@ -28,6 +28,7 @@ C# WPF, один `GnirehtetSquad.exe` (self-contained, .NET ставить не 
 ```
 src/GnirehtetSquad/
   App.xaml(.cs)          запуск, один экземпляр, трей, аргументы командной строки
+  Crash.cs               crash.log и сообщение об ошибке запуска
   MainWindow.xaml(.cs)   интерфейс: главная, устройства, журнал, настройки
   Core/Engine.cs         relay gnirehtet, adb, журнал, настройки, platform-tools
   Core/Updater.cs        OTA: releases/latest → zip → SHA-256 → замена → перезапуск
@@ -37,7 +38,9 @@ scripts/publish.ps1      сборка exe и zip для релиза
 docs/README.txt          README внутри архива
 ```
 
-Вшитые `gnirehtet.exe` и `gnirehtet.apk` при запуске распаковываются в `%APPDATA%\GnirehtetSquad\bin`. Настройки: `%APPDATA%\GnirehtetSquad\settings.json`.
+Вшитые `gnirehtet.exe` и `gnirehtet.apk` при запуске распаковываются в `%LOCALAPPDATA%\GnirehtetSquad\bin`. Настройки: `%APPDATA%\GnirehtetSquad\settings.json`, ошибки запуска: `%APPDATA%\GnirehtetSquad\crash.log`.
+
+Запуск: окно и значок в трее появляются сразу, распаковка gnirehtet, поиск adb и автозапуск relay идут в фоне. Повторный запуск просит работающую копию показать окно; если она не отвечает 7 секунд (зависла), она завершается и программа запускается заново.
 
 ### OTA
 

@@ -9,7 +9,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>GnirehtetSquad</AssemblyName>
     <RootNamespace>GnirehtetSquad</RootNamespace>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>JEFFRIPPER</Authors>
     <Product>Gnirehtet Squad</Product>
     <Description>Gnirehtet Squad — интернет компьютера на Android по USB</Description>

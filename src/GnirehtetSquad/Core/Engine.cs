@@ -20,7 +20,7 @@ namespace GnirehtetSquad.Core;
 public sealed partial class Engine
 {
     public const string AppName = "Gnirehtet Squad";
-    public const string AppVersion = "2.0.0";
+    public const string AppVersion = "2.0.1";
     const string PlatformToolsUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
     const string ApkPackage = "com.genymobile.gnirehtet";
     const int MaxLogLines = 3000;
@@ -68,10 +68,34 @@ public sealed partial class Engine
         Background = background;
         ExePath = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "GnirehtetSquad.exe");
         BaseDir = Path.GetDirectoryName(ExePath) ?? AppContext.BaseDirectory;
-        CfgDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GnirehtetSquad");
-        ToolsDir = Path.Combine(CfgDir, "bin");
-        Directory.CreateDirectory(CfgDir);
+        // настройки — в Roaming, исполняемые файлы — в Local (Roaming на рабочих ПК бывает сетевой папкой)
+        CfgDir = DataDir(Environment.SpecialFolder.ApplicationData);
+        ToolsDir = Path.Combine(DataDir(Environment.SpecialFolder.LocalApplicationData), "bin");
         LoadSettings();
+        Log("app", $"{AppName} {AppVersion} · папка: {BaseDir}");
+    }
+
+    /// <summary>Папка GnirehtetSquad в указанной системной папке; если её нельзя создать — в Local или %TEMP%.</summary>
+    static string DataDir(Environment.SpecialFolder folder)
+    {
+        var roots = new[]
+        {
+            Environment.GetFolderPath(folder),
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            Path.GetTempPath(),
+        };
+        foreach (var root in roots)
+        {
+            if (string.IsNullOrEmpty(root)) continue;
+            var dir = Path.Combine(root, "GnirehtetSquad");
+            try
+            {
+                Directory.CreateDirectory(dir);
+                return dir;
+            }
+            catch { }
+        }
+        return Path.Combine(Path.GetTempPath(), "GnirehtetSquad");
     }
 
     public int StateVersion => Volatile.Read(ref _stateVersion);
@@ -83,9 +107,9 @@ public sealed partial class Engine
 
     // ---------- запуск ----------
 
+    /// <summary>Распаковка инструментов, опрос adb, автозапуск relay. Вызывается в фоновом потоке.</summary>
     public void Init(bool afterUpdate, bool startRelay)
     {
-        Log("app", $"{AppName} {AppVersion} · папка: {BaseDir}");
         if (afterUpdate) Log("app", "✓ Программа обновлена до версии " + AppVersion);
         ExtractTools();
         Task.Run(CleanupOld);
@@ -102,7 +126,7 @@ public sealed partial class Engine
         Task.Run(UpdateLoop);
     }
 
-    /// <summary>Распаковывает вшитые gnirehtet.exe и gnirehtet.apk в %APPDATA%\GnirehtetSquad\bin.</summary>
+    /// <summary>Распаковывает вшитые gnirehtet.exe и gnirehtet.apk в %LOCALAPPDATA%\GnirehtetSquad\bin.</summary>
     void ExtractTools()
     {
         try { Directory.CreateDirectory(ToolsDir); }
@@ -281,14 +305,14 @@ public sealed partial class Engine
         var outTask = p.StandardOutput.ReadToEndAsync();
         var errTask = p.StandardError.ReadToEndAsync();
         using var cts = new CancellationTokenSource(timeout);
-        try { await p.WaitForExitAsync(cts.Token); }
+        try { await p.WaitForExitAsync(cts.Token).ConfigureAwait(false); }
         catch (OperationCanceledException)
         {
             try { p.Kill(true); } catch { }
             throw new TimeoutException($"превышено время ожидания ({timeout.TotalSeconds:0} с)");
         }
         // adb может запустить свой сервер, который унаследует каналы вывода, — не ждём их вечно
-        await Task.WhenAny(Task.WhenAll(outTask, errTask), Task.Delay(2000));
+        await Task.WhenAny(Task.WhenAll(outTask, errTask), Task.Delay(2000)).ConfigureAwait(false);
         string output = (outTask.IsCompletedSuccessfully ? outTask.Result : "") +
                         (errTask.IsCompletedSuccessfully ? errTask.Result : "");
         if (logOutput)
@@ -298,7 +322,7 @@ public sealed partial class Engine
 
     async Task GnirehtetAsync(TimeSpan timeout, params string[] args)
     {
-        var (_, code) = await RunToolAsync(timeout, true, GnirehtetPath, args);
+        var (_, code) = await RunToolAsync(timeout, true, GnirehtetPath, args).ConfigureAwait(false);
         if (code != 0) throw new Exception($"код завершения {code}");
     }
 
@@ -307,7 +331,7 @@ public sealed partial class Engine
         string adb;
         lock (_lock) adb = _adbPath;
         if (adb == "") throw new Exception("adb не найден");
-        return await RunToolAsync(timeout, false, adb, args);
+        return await RunToolAsync(timeout, false, adb, args).ConfigureAwait(false);
     }
 
     // ---------- relay ----------
@@ -535,7 +559,9 @@ public sealed partial class Engine
     public void PollDevices()
     {
         if (Interlocked.Exchange(ref _polling, 1) == 1) return;
-        try { PollDevicesAsync().GetAwaiter().GetResult(); }
+        // только в пуле потоков: синхронное ожидание async-кода на UI-потоке WPF
+        // даёт взаимоблокировку (из-за неё 2.0.0 зависала при старте, если adb найден)
+        try { Task.Run(PollDevicesAsync).GetAwaiter().GetResult(); }
         catch (Exception ex) { Log("debug", "Опрос устройств: " + ex.Message); }
         finally { Volatile.Write(ref _polling, 0); }
     }
@@ -562,7 +588,7 @@ public sealed partial class Engine
         {
             try
             {
-                var (output, code) = await AdbAsync(TimeSpan.FromSeconds(8), "devices", "-l");
+                var (output, code) = await AdbAsync(TimeSpan.FromSeconds(8), "devices", "-l").ConfigureAwait(false);
                 if (code != 0) adbErr = $"adb devices: код {code} {FirstLine(output)}".Trim();
                 else list = ParseDevices(output);
             }

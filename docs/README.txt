@@ -27,7 +27,14 @@ Root на телефоне не нужен. Обычная Windows-програ�
 
 ФАЙЛЫ
 - Настройки: %APPDATA%\GnirehtetSquad\settings.json
+- Ошибки запуска: %APPDATA%\GnirehtetSquad\crash.log
+- gnirehtet.exe и gnirehtet.apk распаковываются в %LOCALAPPDATA%\GnirehtetSquad\bin
 - Исходники: https://github.com/JEFFRIPPER/GIHERNET-SQUAD
+
+ЕСЛИ НЕ ОТКРЫВАЕТСЯ
+- Windows SmartScreen: «Подробнее» → «Выполнить в любом случае».
+- Если зависла старая копия программы, новая сама её завершит (до 10 секунд).
+- При ошибке программа покажет сообщение; подробности — в crash.log (путь выше).
 
 Параметры командной строки:
   GnirehtetSquad.exe --background   без окна, сразу запустить relay (используется автозагрузкой)
