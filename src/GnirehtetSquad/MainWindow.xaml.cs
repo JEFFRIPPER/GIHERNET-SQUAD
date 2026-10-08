@@ -532,6 +532,11 @@ public partial class MainWindow : Window
             ShowToast("Порт должен быть числом 1–65535");
             return;
         }
+        if (Settings.ValidateNetwork(SetDns.Text, SetRoutes.Text) is { } err)
+        {
+            ShowToast(err);
+            return;
+        }
         var s = _engine.CurrentSettings;
         s.Dns = SetDns.Text.Trim();
         s.Routes = SetRoutes.Text.Trim();

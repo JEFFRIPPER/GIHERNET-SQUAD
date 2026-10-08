@@ -20,7 +20,7 @@ namespace GnirehtetSquad.Core;
 public sealed partial class Engine
 {
     public const string AppName = "Gnirehtet Squad";
-    public const string AppVersion = "2.0.1";
+    public const string AppVersion = "2.0.2";
     const string PlatformToolsUrl = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip";
     const string ApkPackage = "com.genymobile.gnirehtet";
     const int MaxLogLines = 3000;
@@ -111,6 +111,14 @@ public sealed partial class Engine
     public void Init(bool afterUpdate, bool startRelay)
     {
         if (afterUpdate) Log("app", "✓ Программа обновлена до версии " + AppVersion);
+        bool startup;
+        lock (_lock) startup = _settings.StartWithWindows;
+        if (startup)
+        {
+            // программу могли перенести в другую папку — обновляем путь в автозагрузке
+            try { SetStartup(true); }
+            catch (Exception ex) { Log("warn", "Автозапуск Windows: " + ex.Message); }
+        }
         ExtractTools();
         Task.Run(CleanupOld);
         PollDevices();
@@ -169,7 +177,13 @@ public sealed partial class Engine
 
     void SaveSettingsLocked()
     {
-        try { File.WriteAllText(SettingsPath, JsonSerializer.Serialize(_settings, JsonOpts)); }
+        try
+        {
+            // через временный файл, чтобы сбой посреди записи не обнулил настройки
+            var tmp = SettingsPath + ".tmp";
+            File.WriteAllText(tmp, JsonSerializer.Serialize(_settings, JsonOpts));
+            File.Move(tmp, SettingsPath, true);
+        }
         catch (Exception ex) { LogLocked("error", "Не удалось сохранить настройки: " + ex.Message); }
     }
 
@@ -354,16 +368,21 @@ public sealed partial class Engine
         return args;
     }
 
+    /// <summary>Свободен ли порт: проверяем и 127.0.0.1, и 0.0.0.0 — Windows разрешает
+    /// занять 127.0.0.1:порт, даже если кто-то слушает 0.0.0.0:порт.</summary>
     static bool PortFree(int port)
     {
-        try
+        foreach (var addr in new[] { IPAddress.Any, IPAddress.Loopback })
         {
-            var l = new TcpListener(IPAddress.Loopback, port);
-            l.Start();
-            l.Stop();
-            return true;
+            try
+            {
+                var l = new TcpListener(addr, port);
+                l.Start();
+                l.Stop();
+            }
+            catch { return false; }
         }
-        catch { return false; }
+        return true;
     }
 
     public void Start(string? mode, string? serial)
@@ -473,7 +492,24 @@ public sealed partial class Engine
         }
         if (p != null)
         {
-            try { p.Kill(true); p.WaitForExit(3000); } catch { }
+            bool exited = false;
+            try { p.Kill(true); exited = p.WaitForExit(3000); }
+            catch (InvalidOperationException) { exited = true; } // процесс уже завершился
+            catch { }
+            // сразу отмечаем остановку, не дожидаясь события Exited:
+            // иначе Restart/Start успевают увидеть «relay уже запущен»
+            if (exited)
+                lock (_lock)
+                {
+                    if (_proc == p)
+                    {
+                        _proc = null;
+                        _running = false;
+                        _clients.Clear();
+                        LogLocked("app", "■ Relay остановлен");
+                        ChangedLocked();
+                    }
+                }
         }
         var tasks = serials.Select(s => Task.Run(async () =>
         {
@@ -790,6 +826,14 @@ public sealed partial class Engine
             await using (var src = await resp.Content.ReadAsStreamAsync())
             await using (var dst = File.Create(tmp))
                 await CopyWithProgress(src, dst, null, n => { lock (_lock) { if (_download != null) _download.Done = n; ChangedLocked(); } });
+            // запущенный adb-сервер из этой же папки держит adb.exe — останавливаем, иначе файл не перезаписать
+            string adb;
+            lock (_lock) adb = _adbPath;
+            if (adb != "" && Path.GetFullPath(adb).StartsWith(Path.GetFullPath(Path.Combine(target, "platform-tools")), StringComparison.OrdinalIgnoreCase))
+            {
+                try { await AdbAsync(TimeSpan.FromSeconds(10), "kill-server"); } catch { }
+                await Task.Delay(500);
+            }
             ZipFile.ExtractToDirectory(tmp, target, true);
         }
         finally { TryDelete(tmp); }

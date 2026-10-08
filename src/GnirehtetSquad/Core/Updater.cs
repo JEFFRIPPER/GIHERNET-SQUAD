@@ -226,9 +226,11 @@ public sealed partial class Engine
                     try { if (File.Exists(p + ".old")) File.Move(p + ".old", p); } catch { }
                 }
             }
+            // exe мог быть переименован (например, «GnirehtetSquad (1).exe» после скачивания) — обновляем именно его
+            var selfFile = Path.GetFileName(ExePath);
             foreach (var (name, entry) in files)
             {
-                var dst = Path.Combine(BaseDir, name);
+                var dst = Path.Combine(BaseDir, name.Equals(SelfName, StringComparison.OrdinalIgnoreCase) ? selfFile : name);
                 try
                 {
                     if (File.Exists(dst))
@@ -249,7 +251,7 @@ public sealed partial class Engine
             // 5. перезапуск новой версии
             SetStage("restart", 0);
             Log("app", $"✓ Обновление {latest} установлено, перезапуск…");
-            var psi = new ProcessStartInfo(Path.Combine(BaseDir, SelfName)) { UseShellExecute = false, WorkingDirectory = BaseDir };
+            var psi = new ProcessStartInfo(Path.Combine(BaseDir, selfFile)) { UseShellExecute = false, WorkingDirectory = BaseDir };
             psi.ArgumentList.Add("--after-update");
             if (wasRunning) psi.ArgumentList.Add("--start-relay");
             if (Background) psi.ArgumentList.Add("--background");

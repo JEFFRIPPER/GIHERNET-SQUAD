@@ -247,7 +247,12 @@ public partial class App : Application
                 if (s.Running || s.Starting) Engine.Stop(true);
                 else Engine.Start(null, null);
             }
-            catch (Exception ex) { Engine.Log("error", ex.Message); }
+            catch (Exception ex)
+            {
+                Engine.Log("error", ex.Message);
+                // окна может не быть — показываем ошибку у значка в трее
+                Dispatcher.BeginInvoke(() => _tray?.ShowBalloonTip(5000, Engine.AppName, ex.Message, Forms.ToolTipIcon.Error));
+            }
         });
     }
 

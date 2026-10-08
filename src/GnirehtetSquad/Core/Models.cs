@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Sockets;
+
 namespace GnirehtetSquad.Core;
 
 /// <summary>Настройки; формат settings.json совместим с версиями 1.x.</summary>
@@ -28,6 +31,25 @@ public sealed class Settings
         AdbPath ??= "";
         if (Port <= 0 || Port > 65535) Port = 31416;
     }
+
+    /// <summary>Проверка DNS и маршрутов до запуска relay; null — всё верно, иначе текст ошибки.</summary>
+    public static string? ValidateNetwork(string dns, string routes)
+    {
+        foreach (var d in SplitList(dns))
+            if (!IPAddress.TryParse(d, out var ip) || ip.AddressFamily != AddressFamily.InterNetwork)
+                return $"DNS «{d}»: нужен IPv4-адрес, например 1.1.1.1";
+        foreach (var r in SplitList(routes))
+        {
+            var parts = r.Split('/');
+            if (parts.Length != 2 || !IPAddress.TryParse(parts[0], out var ip) || ip.AddressFamily != AddressFamily.InterNetwork ||
+                !int.TryParse(parts[1], out int bits) || bits < 0 || bits > 32)
+                return $"Маршрут «{r}»: нужен вид 10.0.0.0/8";
+        }
+        return null;
+    }
+
+    static IEnumerable<string> SplitList(string s) =>
+        s.Replace(" ", "").Split(',', StringSplitOptions.RemoveEmptyEntries);
 }
 
 public sealed class Device
